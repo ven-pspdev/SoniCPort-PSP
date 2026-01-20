@@ -512,13 +512,25 @@ set_target_properties(SoniCPort PROPERTIES
 ############
 
 # Find PkgConfig for dependency linking
-if(PSP)
-	find_package(PkgConfig REQUIRED)
-else()
-	find_package(PkgConfig QUIET)
-endif()
+find_package(PkgConfig QUIET)
 
-if(BACKEND MATCHES "SDL2")
+if(PSP)
+	target_compile_definitions(SoniCPort PRIVATE SCP_BACKEND_PSP)
+	target_sources(SoniCPort PRIVATE
+		"src/Backend/PSP/System.c"
+		"src/Backend/PSP/Render.c"
+		"src/Backend/PSP/Input.c"
+	)
+	
+	target_link_libraries(SoniCPort PRIVATE
+		pspgu
+		pspge
+		pspdisplay
+		pspctrl
+		psppower
+		m
+	)
+elseif(BACKEND MATCHES "SDL2")
 	target_compile_definitions(SoniCPort PRIVATE SCP_BACKEND_SDL2)
 	target_sources(SoniCPort PRIVATE
 		"src/Backend/SDL2/System.c"
@@ -526,19 +538,12 @@ if(BACKEND MATCHES "SDL2")
 		"src/Backend/SDL2/Input.c"
 	)
 	
-	if(PSP)
-		pkg_check_modules(SDL2 sdl2 REQUIRED)
-		target_link_libraries(SoniCPort PRIVATE ${SDL2_STATIC_LIBRARIES})
-		target_link_options(SoniCPort PRIVATE ${SDL2_STATIC_LDLIBS_OTHER})
-		target_compile_options(SoniCPort PRIVATE ${SDL2_STATIC_CFLAGS})
-	else()
-		set(SDL_SHARED_ENABLED_BY_DEFAULT OFF)
-		if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-				set(LIBC ON CACHE INTERNAL "" FORCE)	# Needed to prevent possible 'symbol already defined' errors
-		endif()
-		add_subdirectory("lib/SDL" EXCLUDE_FROM_ALL)
-		target_link_libraries(SoniCPort PRIVATE SDL2-static)
+	set(SDL_SHARED_ENABLED_BY_DEFAULT OFF)
+	if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+			set(LIBC ON CACHE INTERNAL "" FORCE)	# Needed to prevent possible 'symbol already defined' errors
 	endif()
+	add_subdirectory("lib/SDL" EXCLUDE_FROM_ALL)
+	target_link_libraries(SoniCPort PRIVATE SDL2-static)
 endif()
 
 # PSP
@@ -548,13 +553,15 @@ if(PSP)
 		-O3
 		-ffast-math
 		-fomit-frame-pointer
+		-funroll-loops
+		-fsingle-precision-constant
+		-fno-exceptions
 	)
 	
 	target_compile_definitions(SoniCPort PRIVATE
 		SCP_PSP=1
+		NDEBUG=1
 	)
-	
-	target_link_libraries(SoniCPort PRIVATE m)
 	
 	create_pbp_file(TARGET SoniCPort
 		TITLE "SoniCPort"

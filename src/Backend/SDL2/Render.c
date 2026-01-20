@@ -79,6 +79,14 @@ int Render_Init(const MD_Header *header)
 	SDL_ShowWindow(window);
 #endif
 	
+#ifdef SCP_PSP
+	vsync = 1;
+	if ((renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC)) == NULL)
+	{
+		return -1;
+	}
+	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+#else
 	//Check if VSync should be used
 	SDL_DisplayMode display_mode;
 	SDL_GetWindowDisplayMode(window, &display_mode);
@@ -93,9 +101,6 @@ int Render_Init(const MD_Header *header)
 		printf("Render_Init: %s\n", SDL_GetError());
 		return -1;
 	}
-	
-#ifdef SCP_PSP
-	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
 #endif
 	
 	//Create screen texture

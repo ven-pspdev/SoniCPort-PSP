@@ -15,7 +15,9 @@ void Render_Screen(const uint32_t *screen);
 int Input_HandleEvents();
 
 //VDP compile options
+#ifndef SCP_PSP
 #define VDP_SANITY //Enable sanity checks for the VDP (slower, but technically safer, basically for testing)
+#endif
 //#define VDP_PALETTE_DISPLAY //Enable palette display
 
 //VDP masks
@@ -270,7 +272,11 @@ static inline uint32_t VDP_GetColour(size_t index)
 	uint8_t b = (cv & 0xE00) >> 9;
 	
 	static const uint8_t col_level[] = {0, 52, 87, 116, 144, 172, 206, 255};
+#ifdef SCP_PSP
+	return 0xFF000000 | (col_level[b] << 16) | (col_level[g] << 8) | col_level[r];
+#else
 	return (col_level[r] << 24) | (col_level[g] << 16) | (col_level[b] << 8) | 0xFF;
+#endif
 }
 
 static inline uint8_t *VDP_GetPatternAddress(size_t pattern)
