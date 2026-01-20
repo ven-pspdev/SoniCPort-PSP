@@ -16,10 +16,17 @@
 	#define TEXTURE_HEIGHT SCREEN_HEIGHT
 #endif
 
+#ifdef SCP_PSP
+	#define PSP_SCREEN_WIDTH  480
+	#define PSP_SCREEN_HEIGHT 272
+#endif
+
 //Icon
+#ifndef SCP_PSP
 static uint8_t icon_data[] = {
 	#include "Resource/Icon.h"
 };
+#endif
 
 //Window and renderer
 static SDL_Window *window = NULL;
@@ -29,9 +36,26 @@ static SDL_Texture *texture = NULL;
 //Render state
 static int vsync;
 
+#ifdef SCP_PSP
+static SDL_Rect psp_dest_rect;
+#endif
+
 //Backend render interface
 int Render_Init(const MD_Header *header)
 {
+#ifdef SCP_PSP
+	if ((window = SDL_CreateWindow(header->title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, PSP_SCREEN_WIDTH, PSP_SCREEN_HEIGHT, SDL_WINDOW_FULLSCREEN)) == NULL)
+	{
+		printf("Render_Init: %s\n", SDL_GetError());
+		return -1;
+	}
+	
+	float scale = (float)PSP_SCREEN_HEIGHT / (float)TEXTURE_HEIGHT;
+	psp_dest_rect.w = (int)(TEXTURE_WIDTH * scale);
+	psp_dest_rect.h = PSP_SCREEN_HEIGHT;
+	psp_dest_rect.x = (PSP_SCREEN_WIDTH - psp_dest_rect.w) / 2;
+	psp_dest_rect.y = 0;
+#else
 	//Create window
 	if ((window = SDL_CreateWindow(header->title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, TEXTURE_WIDTH * SCREEN_SCALE, TEXTURE_HEIGHT * SCREEN_SCALE, SDL_WINDOW_HIDDEN)) == NULL)
 	{
@@ -53,6 +77,7 @@ int Render_Init(const MD_Header *header)
 	
 	//Show window now that the icon's been loaded
 	SDL_ShowWindow(window);
+#endif
 	
 	//Check if VSync should be used
 	SDL_DisplayMode display_mode;
@@ -68,6 +93,10 @@ int Render_Init(const MD_Header *header)
 		printf("Render_Init: %s\n", SDL_GetError());
 		return -1;
 	}
+	
+#ifdef SCP_PSP
+	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+#endif
 	
 	//Create screen texture
 	if ((texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, TEXTURE_WIDTH, TEXTURE_HEIGHT)) == NULL)
@@ -140,7 +169,12 @@ void Render_Screen(const uint32_t *screen)
 	
 	for (int i = 0; i < (vsync == 0 ? 1 : vsync); i++)
 	{
+#ifdef SCP_PSP
+		SDL_RenderClear(renderer);
+		SDL_RenderCopy(renderer, texture, NULL, &psp_dest_rect);
+#else
 		SDL_RenderCopy(renderer, texture, NULL, NULL);
+#endif
 		SDL_RenderPresent(renderer);
 	}
 }

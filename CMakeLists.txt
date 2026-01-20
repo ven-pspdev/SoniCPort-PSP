@@ -13,6 +13,8 @@ option(SANITIZE "Enable sanitization" OFF)
 option(LTO "Enable link-time optimization" OFF)
 option(MSVC_LINK_STATIC_RUNTIME "Link the static MSVC runtime library (Visual Studio only)" OFF)
 
+option(PSP "Build for PlayStation Portable" ON)
+
 #########
 # Setup #
 #########
@@ -510,7 +512,11 @@ set_target_properties(SoniCPort PROPERTIES
 ############
 
 # Find PkgConfig for dependency linking
-find_package(PkgConfig QUIET)
+if(PSP)
+	find_package(PkgConfig REQUIRED)
+else()
+	find_package(PkgConfig QUIET)
+endif()
 
 if(BACKEND MATCHES "SDL2")
 	target_compile_definitions(SoniCPort PRIVATE SCP_BACKEND_SDL2)
@@ -520,13 +526,41 @@ if(BACKEND MATCHES "SDL2")
 		"src/Backend/SDL2/Input.c"
 	)
 	
-	# Compile and link SDL2
-	set(SDL_SHARED_ENABLED_BY_DEFAULT OFF)
-	if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-			set(LIBC ON CACHE INTERNAL "" FORCE)	# Needed to prevent possible 'symbol already defined' errors
+	if(PSP)
+		pkg_check_modules(SDL2 sdl2 REQUIRED)
+		target_link_libraries(SoniCPort PRIVATE ${SDL2_STATIC_LIBRARIES})
+		target_link_options(SoniCPort PRIVATE ${SDL2_STATIC_LDLIBS_OTHER})
+		target_compile_options(SoniCPort PRIVATE ${SDL2_STATIC_CFLAGS})
+	else()
+		set(SDL_SHARED_ENABLED_BY_DEFAULT OFF)
+		if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+				set(LIBC ON CACHE INTERNAL "" FORCE)	# Needed to prevent possible 'symbol already defined' errors
+		endif()
+		add_subdirectory("lib/SDL" EXCLUDE_FROM_ALL)
+		target_link_libraries(SoniCPort PRIVATE SDL2-static)
 	endif()
-	add_subdirectory("lib/SDL" EXCLUDE_FROM_ALL)
-	target_link_libraries(SoniCPort PRIVATE SDL2-static)
+endif()
+
+# PSP
+
+if(PSP)
+	target_compile_options(SoniCPort PRIVATE
+		-O3
+		-ffast-math
+		-fomit-frame-pointer
+	)
+	
+	target_compile_definitions(SoniCPort PRIVATE
+		SCP_PSP=1
+	)
+	
+	target_link_libraries(SoniCPort PRIVATE m)
+	
+	create_pbp_file(TARGET SoniCPort
+		TITLE "SoniCPort"
+		# ICON_PATH "${CMAKE_SOURCE_DIR}/psp/icon0.png"
+		# BACKGROUND_PATH "${CMAKE_SOURCE_DIR}/psp/pic1.png"
+	)
 endif()
 
 #######################

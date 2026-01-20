@@ -12,3 +12,4 @@ CMakeSettings.json
 libs/build*/
 libs/download
 libs/install
+/psp-build
